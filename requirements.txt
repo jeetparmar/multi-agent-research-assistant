@@ -3,7 +3,7 @@ uvicorn
 pydantic
 httpx
 python-dotenv
-openai
+groq
 beautifulsoup4
 lxml
 python-json-logger

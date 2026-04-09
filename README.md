@@ -9,7 +9,7 @@ A FastAPI service that researches a topic using multiple specialized agents:
 ## Requirements
 
 - Python 3.10+
-- OpenAI API key
+- Groq API key
 - Tavily API key
 
 ## Setup
@@ -30,7 +30,8 @@ pip install -r requirements.txt
 3. Create a `.env` file in the project root:
 
 ```env
-OPENAI_API_KEY=your_openai_api_key
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.3-70b-versatile
 TAVILY_API_KEY=your_tavily_api_key
 ```
 
@@ -71,7 +72,7 @@ Example response shape:
 ```text
 app/
   agents/       # Planner, search, summarizer, reporter agents
-  services/     # OpenAI and Tavily service clients
+  services/     # Groq and Tavily service clients
   models/       # Request/response models
   middleware/   # Request context middleware
   core/         # Config and logging
@@ -82,4 +83,5 @@ app/
 ## Notes
 
 - Environment variables are loaded from `.env` (`app/core/config.py`).
+- `GROQ_MODEL` is optional; if omitted, the app uses `llama-3.3-70b-versatile`.
 - The app uses async concurrency for parallel subtopic processing.
