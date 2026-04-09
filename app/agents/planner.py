@@ -3,11 +3,7 @@ import time
 from json import JSONDecodeError
 
 from app.core.logging import get_logger
-from app.services.llm_service import call_llm
-from app.utils.async_helpers import AsyncLimiter
-
-# Initialize an async limiter to control the number of concurrent LLM calls
-llm_limiter = AsyncLimiter(max_concurrent=3)
+from app.services.llm_service import call_llm, llm_limiter
 logger = get_logger("planner_agent")
 
 
@@ -49,7 +45,9 @@ async def planner_agent(query: str, request_id: str):
     start = time.time()
     try:
         # Call the LLM with rate limiting to get the research plan
-        response = await llm_limiter.run(call_llm(system_prompt, user_prompt))
+        response = await llm_limiter.run(
+            call_llm(system_prompt, user_prompt, request_id)
+        )
         plan = _parse_plan_response(response)
         duration = int((time.time() - start) * 1000)
         logger.info(

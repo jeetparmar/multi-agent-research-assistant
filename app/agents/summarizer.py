@@ -1,12 +1,9 @@
 import time
 from app.core.logging import get_logger
-from app.services.llm_service import call_llm
-from app.utils.async_helpers import AsyncLimiter
+from app.services.llm_service import call_llm, llm_limiter
 
 # Initialize the logger for the summarizer agent
 logger = get_logger("summarizer_agent")
-# Create an async limiter to control concurrency for LLM calls (max 3 concurrent calls)
-llm_limiter = AsyncLimiter(max_concurrent=3)
 
 # Summarizer agent that takes research content and produces a structured summary with key insights, statistics, risks, and opportunities.
 async def summarize_agent(content: str, request_id: str):
@@ -26,7 +23,9 @@ async def summarize_agent(content: str, request_id: str):
     start = time.time()
     try:
         # Use the LLM to generate a summary based on the provided content and prompts
-        summary = await llm_limiter.run(call_llm(system_prompt, user_prompt))
+        summary = await llm_limiter.run(
+            call_llm(system_prompt, user_prompt, request_id)
+        )
         duration = int((time.time() - start) * 1000)
         logger.info(
             f"Summarization completed",

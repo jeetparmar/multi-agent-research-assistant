@@ -1,10 +1,38 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
+import httpx
 from fastapi.testclient import TestClient
 
 from app.agents.planner import planner_agent
+from app.core.config import settings
 from app.main import app
+from app.services.llm_service import (
+    GROQ_CHAT_COMPLETIONS_URL,
+    LLMRateLimitError,
+    call_llm,
+)
+
+
+class _FakeAsyncClient:
+    def __init__(self, responses):
+        self.post = AsyncMock(side_effect=responses)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+def _make_response(status_code, payload, headers=None):
+    request = httpx.Request("POST", GROQ_CHAT_COMPLETIONS_URL)
+    return httpx.Response(
+        status_code,
+        json=payload,
+        headers=headers or {},
+        request=request,
+    )
 
 
 class PlannerAgentTests(unittest.IsolatedAsyncioTestCase):
@@ -27,6 +55,38 @@ class PlannerAgentTests(unittest.IsolatedAsyncioTestCase):
             plan = await planner_agent("renewable energy", "req-456")
 
         self.assertEqual(plan, {"subtopics": ["solar", "storage"]})
+
+
+class LlmServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_call_llm_retries_after_rate_limit_and_returns_content(self):
+        fake_client = _FakeAsyncClient(
+            [
+                _make_response(
+                    429,
+                    {"error": {"message": "rate limited"}},
+                    headers={"Retry-After": "0"},
+                ),
+                _make_response(
+                    200,
+                    {
+                        "choices": [
+                            {"message": {"content": "Recovered summary"}}
+                        ]
+                    },
+                ),
+            ]
+        )
+
+        with (
+            patch("app.services.llm_service.httpx.AsyncClient", return_value=fake_client),
+            patch("app.services.llm_service.asyncio.sleep", new=AsyncMock()) as sleep,
+            patch.object(settings, "LLM_MAX_RETRIES", 1),
+        ):
+            result = await call_llm("system", "user", "req-1")
+
+        self.assertEqual(result, "Recovered summary")
+        self.assertEqual(fake_client.post.await_count, 2)
+        sleep.assert_awaited_once_with(0.0)
 
 
 class ResearchEndpointTests(unittest.TestCase):
@@ -65,6 +125,24 @@ class ResearchEndpointTests(unittest.TestCase):
             all(call.args[1] == request_id for call in process_topic.await_args_list)
         )
         reporter.assert_awaited_once_with(query, ["summary 1", "summary 2"], request_id)
+
+    def test_research_endpoint_returns_503_when_llm_rate_limited(self):
+        query = "What are the latest trends in renewable energy?"
+
+        with patch(
+            "app.main.planner_agent",
+            new=AsyncMock(side_effect=LLMRateLimitError("rate limited")),
+        ):
+            client = TestClient(app)
+            response = client.post("/research", json={"query": query})
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json(),
+            {
+                "detail": "The language model provider is rate-limiting requests. Please retry shortly."
+            },
+        )
 
 
 if __name__ == "__main__":

@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 import asyncio
 
 from app.middleware.request_context import RequestContextMiddleware
-from app.models.research_models import ResearchRequest
+from app.models.research_models import ResearchRequest, ResearchResponse
 from app.agents.planner import planner_agent
 from app.agents.search import search_agent
 from app.agents.summarizer import summarize_agent
 from app.agents.reporter import report_agent
+from app.services.llm_service import LLMRateLimitError, LLMServiceError
 
 # Initialize FastAPI app and add middleware for request context
 app = FastAPI(title="Multi-Agent Research Assistant", version="1.0", description="An AI assistant that performs research tasks using multiple agents.", contact={"name": "Support", "email": "support@example.com"}, license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"}, docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json")
@@ -28,21 +29,32 @@ async def process_topic(topic: str, request_id: str):
 # {
 #   "query": "What are the latest trends in renewable energy?"
 # }
-@app.post("/research")
+@app.post("/research", response_model=ResearchResponse)
 async def research(request: ResearchRequest, req: Request):
     # Extract request_id from middleware context
     request_id = req.state.request_id
-    # Step 1: Generate research plan with subtopics
-    plan = await planner_agent(request.query, request_id)
-    # Step 2: For each subtopic, perform search and summarization in parallel
-    tasks = [process_topic(topic, request_id) for topic in plan["subtopics"]]
-    # Wait for all tasks to complete and gather summaries
-    summaries = await asyncio.gather(*tasks)
-    # Step 3: Compile final report from summaries
-    final_report = await report_agent(request.query, summaries, request_id)
-    # Return the structured response
-    return {
-        "query": request.query,
-        "subtopics": plan["subtopics"],
-        "report": final_report,
-    }
+    try:
+        # Step 1: Generate research plan with subtopics
+        plan = await planner_agent(request.query, request_id)
+        # Step 2: For each subtopic, perform search and summarization in parallel
+        tasks = [process_topic(topic, request_id) for topic in plan["subtopics"]]
+        # Wait for all tasks to complete and gather summaries
+        summaries = await asyncio.gather(*tasks)
+        # Step 3: Compile final report from summaries
+        final_report = await report_agent(request.query, summaries, request_id)
+        # Return the structured response
+        return {
+            "query": request.query,
+            "subtopics": plan["subtopics"],
+            "report": final_report,
+        }
+    except LLMRateLimitError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The language model provider is rate-limiting requests. Please retry shortly.",
+        ) from exc
+    except LLMServiceError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="The language model provider is temporarily unavailable. Please retry shortly.",
+        ) from exc

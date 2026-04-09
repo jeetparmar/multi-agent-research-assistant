@@ -33,6 +33,11 @@ pip install -r requirements.txt
 GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=llama-3.3-70b-versatile
 TAVILY_API_KEY=your_tavily_api_key
+API_BASE_URL=http://127.0.0.1:8000
+LLM_MAX_CONCURRENT=2
+LLM_MAX_RETRIES=3
+LLM_RETRY_BASE_DELAY=1.0
+LLM_TIMEOUT_SECONDS=60
 ```
 
 ## Run
@@ -43,9 +48,16 @@ Start the API server:
 uvicorn app.main:app --reload
 ```
 
+Start the Streamlit frontend in a second terminal:
+
+```bash
+streamlit run streamlit_app.py
+```
+
 API docs:
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
+- Streamlit UI: `http://127.0.0.1:8501`
 
 ## Usage
 
@@ -67,6 +79,13 @@ Example response shape:
 }
 ```
 
+Or use the Streamlit UI:
+
+- Enter a topic in the text area.
+- Confirm the FastAPI base URL in the sidebar.
+- Click `Run Research` to call `POST /research`.
+- Review the generated subtopics and final markdown report.
+
 ## Project Structure
 
 ```text
@@ -78,10 +97,14 @@ app/
   core/         # Config and logging
   utils/        # Async helpers (retry, limiter)
   main.py       # FastAPI entrypoint
+frontend/
+  research_api.py  # Shared client used by the Streamlit frontend
+streamlit_app.py   # Streamlit frontend
 ```
 
 ## Notes
 
-- Environment variables are loaded from `.env` (`app/core/config.py`).
+- Environment variables are loaded from `.env` by both the backend config and the Streamlit API client.
 - `GROQ_MODEL` is optional; if omitted, the app uses `llama-3.3-70b-versatile`.
-- The app uses async concurrency for parallel subtopic processing.
+- The app uses async concurrency for parallel subtopic processing, with a shared limiter for Groq calls.
+- Groq `429` and transient `5xx` responses are retried with backoff before the API returns a `503` or `502`.
