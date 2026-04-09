@@ -90,6 +90,18 @@ class LlmServiceTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ResearchEndpointTests(unittest.TestCase):
+    def test_how_it_works_page_returns_html_with_flow_and_code_example(self):
+        client = TestClient(app)
+        response = client.get("/how-it-works")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/html", response.headers["content-type"])
+        self.assertIn("How this research assistant works", response.text)
+        self.assertIn("Detailed flow", response.text)
+        self.assertIn("Code example", response.text)
+        self.assertIn("async def process_topic", response.text)
+        self.assertIn("async def research", response.text)
+
     def test_research_endpoint_passes_request_id_through_pipeline(self):
         query = "What are the latest trends in renewable energy?"
         planner = AsyncMock(return_value={"subtopics": ["solar", "storage"]})

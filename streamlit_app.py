@@ -4,6 +4,7 @@ import streamlit as st
 from frontend.research_api import (
     DEFAULT_API_BASE_URL,
     DEFAULT_TIMEOUT_SECONDS,
+    build_how_it_works_url,
     fetch_research,
     normalize_api_base_url,
 )
@@ -42,6 +43,22 @@ def render_sidebar() -> tuple[str, int]:
         value=int(DEFAULT_TIMEOUT_SECONDS),
         step=15,
     )
+    st.sidebar.divider()
+    st.sidebar.markdown("### How It Works")
+    try:
+        how_it_works_url = build_how_it_works_url(api_base_url)
+    except ValueError:
+        st.sidebar.caption("Enter a FastAPI base URL to enable the docs link.")
+    else:
+        st.sidebar.markdown(
+            (
+                f'<a href="{how_it_works_url}" '
+                'target="_blank" rel="noopener noreferrer">'
+                "Open detailed flow and code example"
+                "</a>"
+            ),
+            unsafe_allow_html=True,
+        )
     return api_base_url, timeout_seconds
 
 

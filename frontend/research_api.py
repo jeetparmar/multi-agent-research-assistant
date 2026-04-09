@@ -22,6 +22,10 @@ def build_research_url(base_url: str) -> str:
     return f"{normalize_api_base_url(base_url)}/research"
 
 
+def build_how_it_works_url(base_url: str) -> str:
+    return f"{normalize_api_base_url(base_url)}/how-it-works"
+
+
 def parse_research_response(payload: dict) -> ResearchResponse:
     return ResearchResponse(**payload)
 

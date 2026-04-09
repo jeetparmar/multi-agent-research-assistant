@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from app.models.research_models import ResearchResponse
 from frontend.research_api import (
+    build_how_it_works_url,
     build_research_url,
     fetch_research,
     normalize_api_base_url,
@@ -23,6 +24,12 @@ class ResearchApiClientTests(unittest.TestCase):
         self.assertEqual(
             build_research_url("http://127.0.0.1:8000/"),
             "http://127.0.0.1:8000/research",
+        )
+
+    def test_build_how_it_works_url_appends_endpoint(self):
+        self.assertEqual(
+            build_how_it_works_url("http://127.0.0.1:8000/"),
+            "http://127.0.0.1:8000/how-it-works",
         )
 
     def test_parse_research_response_validates_shape(self):
