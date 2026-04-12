@@ -34,6 +34,7 @@ GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=llama-3.3-70b-versatile
 TAVILY_API_KEY=your_tavily_api_key
 API_BASE_URL=http://127.0.0.1:8000
+API_TIMEOUT_SECONDS=300
 LLM_MAX_CONCURRENT=2
 LLM_MAX_RETRIES=3
 LLM_RETRY_BASE_DELAY=1.0
@@ -83,6 +84,7 @@ Or use the Streamlit UI:
 
 - Enter a topic in the text area.
 - Confirm the FastAPI base URL in the sidebar.
+- Increase the sidebar timeout for broader topics if a run needs more than a few minutes.
 - Click `Run Research` to call `POST /research`.
 - Review the generated subtopics and final markdown report.
 

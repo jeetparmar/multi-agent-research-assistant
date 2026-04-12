@@ -1,12 +1,14 @@
 import unittest
 from unittest.mock import Mock, patch
 
+import httpx
 from pydantic import ValidationError
 
 from app.models.research_models import ResearchResponse
 from frontend.research_api import (
     build_how_it_works_url,
     build_research_url,
+    describe_request_error,
     fetch_research,
     normalize_api_base_url,
     parse_research_response,
@@ -35,6 +37,26 @@ class ResearchApiClientTests(unittest.TestCase):
     def test_parse_research_response_validates_shape(self):
         with self.assertRaises(ValidationError):
             parse_research_response({"query": "AI", "subtopics": "invalid"})
+
+    def test_describe_request_error_mentions_timeout_value(self):
+        request = httpx.Request("POST", "http://127.0.0.1:8000/research")
+        exc = httpx.ReadTimeout("timed out", request=request)
+
+        message = describe_request_error(exc, 300)
+
+        self.assertEqual(
+            message,
+            "The API took longer than 300 seconds to respond. Increase the sidebar timeout and try again.",
+        )
+
+    def test_describe_request_error_preserves_generic_request_error(self):
+        request = httpx.Request("POST", "http://127.0.0.1:8000/research")
+        exc = httpx.ConnectError("connection refused", request=request)
+
+        message = describe_request_error(exc, 300)
+
+        self.assertIn("Could not reach the API:", message)
+        self.assertIn("connection refused", message)
 
     def test_fetch_research_posts_expected_payload(self):
         mock_response = Mock()

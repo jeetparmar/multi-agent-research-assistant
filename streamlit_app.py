@@ -5,6 +5,7 @@ from frontend.research_api import (
     DEFAULT_API_BASE_URL,
     DEFAULT_TIMEOUT_SECONDS,
     build_how_it_works_url,
+    describe_request_error,
     fetch_research,
     normalize_api_base_url,
 )
@@ -42,6 +43,7 @@ def render_sidebar() -> tuple[str, int]:
         max_value=600,
         value=int(DEFAULT_TIMEOUT_SECONDS),
         step=15,
+        help="Longer research runs may need 300-600 seconds before the API responds.",
     )
     st.sidebar.divider()
     st.sidebar.markdown("### How It Works")
@@ -95,7 +97,7 @@ def main() -> None:
                 f"{exc.response.text[:500] or 'No response body provided.'}"
             )
         except httpx.RequestError as exc:
-            st.error(f"Could not reach the API: {exc}")
+            st.error(describe_request_error(exc, timeout_seconds))
         else:
             st.session_state["api_base_url"] = normalized_api_base_url
             st.session_state["last_query"] = query.strip()

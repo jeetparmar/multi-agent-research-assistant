@@ -8,7 +8,7 @@ from app.models.research_models import ResearchResponse
 load_dotenv()
 
 DEFAULT_API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
-DEFAULT_TIMEOUT_SECONDS = float(os.getenv("API_TIMEOUT_SECONDS", "120"))
+DEFAULT_TIMEOUT_SECONDS = float(os.getenv("API_TIMEOUT_SECONDS", "300"))
 
 
 def normalize_api_base_url(base_url: str) -> str:
@@ -24,6 +24,17 @@ def build_research_url(base_url: str) -> str:
 
 def build_how_it_works_url(base_url: str) -> str:
     return f"{normalize_api_base_url(base_url)}/how-it-works"
+
+
+def describe_request_error(exc: httpx.RequestError, timeout_seconds: float) -> str:
+    if isinstance(exc, httpx.TimeoutException):
+        rounded_timeout = int(timeout_seconds)
+        return (
+            f"The API took longer than {rounded_timeout} seconds to respond. "
+            "Increase the sidebar timeout and try again."
+        )
+
+    return f"Could not reach the API: {exc}"
 
 
 def parse_research_response(payload: dict) -> ResearchResponse:
